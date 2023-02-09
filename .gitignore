@@ -1,0 +1,25 @@
+*.pyc
+dumpObj.py
+url.txt
+
+# pypi
+dist/
+build/
+PixivPy.egg-info/
+MANIFEST
+
+# mac
+.DS_Store
+
+*.jpg
+*.png
+*.gif
+*.qrc
+
+download/
+data/
+example/
+.idea/
+.oo/
+venv/
+notebook/
