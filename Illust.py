@@ -90,6 +90,7 @@ class Illust:
                 else:
                     delay = data.delay
                 self.gif_delay.append(delay)
+
         elif self.page_count == 1:
             url = illust.meta_single_page['original_image_url']
             self.urls.append(url)
@@ -152,13 +153,37 @@ class Illust:
 
         self.saveData()
 
-    def thmbnl_name(self):
+    @property
+    def thumbnail_name(self):
         """
-        return thumbnail saving path
+        return thumbnail file name
         """
         return str(self.id) + os.path.splitext(self.sq_preview_url)[1]
 
-    def r18_path(self):
+    @property
+    def data_name(self):
+        """
+        return data file name
+        """
+        return str(self.id) + Parameters.data_extension
+
+    def getLargeName(self, index=0):
+        """
+        return cache file name by index
+        """
+        if self.type == "ugoira":
+            return str(self.id) + Parameters.gif_extension
+        else:
+            return str(self.id) + "_" + str(index) + os.path.splitext(self.large_urls[index])[1]
+
+    def getOriginName(self, index=0):
+        """
+        return original file name by index and currently only worked in by_index naming method
+        """
+        return self.setName(index, self.urls[index])
+
+    @property
+    def r18_dir(self):
         """
         return empty string if illust sfw
         else return r-18 subfolder path
@@ -169,6 +194,7 @@ class Illust:
             r18_path = ""
         return r18_path
 
+    @property
     def special_tag_subfolder(self):
         """
         return subfolder of current illust
@@ -242,71 +268,32 @@ class Illust:
         return os.path.exists(dest)
 
     def saveThumbnail(self):
-        save_name = self.thmbnl_name()
         if self.need_thumbnail:
-            self.__tryToDownloadFile(self.sq_preview_url, Parameters.illust_thbnl_path + save_name)
+            self.__tryToDownloadFile(self.sq_preview_url, Parameters.illust_thbnl_path + self.thumbnail_name)
 
     def saveLargeByIndex(self, index):
         """
         save single large pic
         """
+        save_path = Parameters.illust_cache_path + self.getLargeName(index)
+
         if self.type == "ugoira":
             self.downloadGif()
-            save_path = Parameters.illust_cache_path + str(self.id) + ".webp"
             return save_path, DownloadState.successful
-
         else:
-            path = Parameters.illust_cache_path + str(self.id) + "_" + str(index) + os.path.splitext(self.large_urls[index])[1]
-            result = self.__tryToDownloadFile(self.large_urls[index], path, index)
-            return path, result[0]
-
-    def saveLarge(self, start, end):
-        save_path = []
-        end = min(self.page_count, end)
-        results = {}
-
-        if self.type == "ugoira":
-            self.downloadGif()
-            s = Parameters.illust_cache_path + str(self.id) + ".webp"
-            save_path.append(s)
-        else:
-            que = Queue()
-            thread_list = []
-            for num in range(start, end):
-                try:
-                    path = Parameters.illust_cache_path + str(self.id) + "_" + str(num) + os.path.splitext(self.large_urls[num])[1]
-                except IndexError:
-                    break
-                thread = threading.Thread(target=lambda q, arg1, arg2, arg3: q.put(self.__tryToDownloadFile(arg1, arg2, index=arg3)),
-                                          args=(que, self.large_urls[num], path, num))
-                thread_list.append(thread)
-                thread.start()
-
-            for thread in thread_list:
-                thread.join()
-            while not que.empty():
-                result = que.get()
-                results.update({result[1]: result[0]})
-
-            for num in range(start, end):
-                # self.__try_to_download_file(self.large_urls[num], path)
-                try:
-                    save_path.append(Parameters.illust_cache_path + str(self.id) + "_" + str(num) + os.path.splitext(self.large_urls[num])[1])
-                except IndexError:
-                    break
-        return save_path, results
+            result = self.__tryToDownloadFile(self.large_urls[index], save_path, index)
+            return save_path, result[0]
 
     def saveByIndex(self, index: int):
-        r18_path = self.r18_path()
-        special_tag_path = self.special_tag_subfolder()
+        r18_path = self.r18_dir
+        special_tag_path = self.special_tag_subfolder
         if self.type == "ugoira":
-            if os.path.exists(Parameters.illust_cache_path + str(self.id) + ".webp"):
+            if os.path.exists(Parameters.illust_cache_path + self.getLargeName()):
                 path = Parameters.gif_path + r18_path + special_tag_path
-                name = path + self.setName()
+                name = path + self.getOriginName()
 
-                if not os.path.exists(path):
-                    os.makedirs(path)
-                shutil.copyfile(Parameters.illust_cache_path + str(self.id) + ".webp", name)
+                makeDir(path)
+                shutil.copyfile(Parameters.illust_cache_path + self.getLargeName(), name)
                 self.downloaded.update({0: DownloadState.successful})
                 self.saveData()
                 self.downloaded_path = name
@@ -316,10 +303,9 @@ class Illust:
                 self.saveByIndex(index)
         else:
             path = Parameters.download_path + r18_path + special_tag_path
-            if not os.path.exists(path):
-                os.makedirs(path)
+            makeDir(path)
             if not self.isDownloadedBefore(index):
-                name = path + self.setName()
+                name = path + self.getOriginName(index)
                 result = self.__tryToDownloadFile(self.urls[index], name, index=index)
                 self.downloaded.update({result[1]: result[0]})
                 self.saveData()
@@ -327,8 +313,8 @@ class Illust:
                 return {result[1]: result[0]}
 
     def saveAll(self, number: Union[int, list] = 0):
-        r18_path = self.r18_path()
-        special_tag_path = self.special_tag_subfolder()
+        r18_path = self.r18_dir
+        special_tag_path = self.special_tag_subfolder
         self.like()
         results = {}
 
@@ -338,9 +324,8 @@ class Illust:
                 self.saveAll()
 
             path = Parameters.gif_path + r18_path + special_tag_path
-            if not os.path.exists(path):
-                os.makedirs(path)
-            name = path + self.setName()
+            makeDir(path)
+            name = path + self.getOriginName()
             shutil.copyfile(Parameters.illust_cache_path + str(self.id) + ".webp", name)
             self.downloaded.update({0: DownloadState.successful})
             self.downloaded_path = name
@@ -348,9 +333,8 @@ class Illust:
 
         elif self.page_count > 1:
             path = Parameters.group_path + r18_path + special_tag_path + str(self.id) + "\\"
-            if not os.path.exists(path):
-                if (type(number) is list and len(number) > 1) or number == 0:
-                    os.makedirs(path)
+            if type(number) is list or number == 0:
+                makeDir(path)
 
             if number == 0:
                 index_list = []
@@ -359,15 +343,18 @@ class Illust:
                 results = self.downloadListPics(index_list, path)
 
             elif type(number) is int:
+                number -= 1
                 if self.isDownloadedBefore(number) or number > self.page_count:
-                    raise ValueError("Wrong input index", number)
+                    raise IndexError("Wrong input index", number)
 
-                name = Parameters.download_path + r18_path + special_tag_path + self.setName(self.urls[number - 1])
-                result = self.__tryToDownloadFile(self.urls[number - 1], name, index=number)
+                name = Parameters.download_path + r18_path + special_tag_path + self.getOriginName(number)
+                result = self.__tryToDownloadFile(self.urls[number], name, index=number)
                 self.downloaded_path = name
                 results.update({result[1]: result[0]})
 
             elif type(number) is list:
+                for i in range(len(number)):
+                    number[i] -= 1
                 results = self.downloadListPics(number, path)
 
             else:
@@ -376,9 +363,8 @@ class Illust:
         else:
             # page count is 1
             path = Parameters.download_path + r18_path + special_tag_path
-            if not os.path.exists(path):
-                os.makedirs(path)
-            name = path + self.setName(self.urls[0])
+            makeDir(path)
+            name = path + self.getOriginName(0)
             result = self.__tryToDownloadFile(self.urls[0], name)
             results.update({result[1]: result[0]})
             self.downloaded_path = name
@@ -392,28 +378,31 @@ class Illust:
     def deleteCache(self):
         try:
             os.remove(Parameters.illust_data_path + str(self.id) + Parameters.data_extension)
-            os.remove(Parameters.illust_thbnl_path + self.thmbnl_name())
+            os.remove(Parameters.illust_thbnl_path + self.thumbnail_name)
         except FileNotFoundError:
             pass
         print("%d is removed !" % self.id)
 
-    def deleteOriginalFile(self):
-        try:
-            os.remove(Parameters.download_path + self.r18_path() + self.special_tag_subfolder())
-            os.remove(Parameters.gif_path + self.r18_path() + self.special_tag_subfolder())
-            os.remove(Parameters.group_path + self.r18_path() + self.special_tag_subfolder())
-        except FileNotFoundError:
-            pass
-        print("%d is removed" % self.id)
-
-    def setName(self, url='nothing.jpg'):
+    def setName(self, index=0, url='nothing.jpg'):
+        """
+        index should be a number which begin from 0
+        save_type should be "index" or "time"
+        """
         if self.type == "ugoira":
-            extension = '.webp'
+            extension = Parameters.gif_extension
         else:
             extension = os.path.splitext(url)[1]
-        save_time = time.strftime("%Y%m%d_%H%M%S", time.localtime())
-        name = "illust_%d_%s%s" % (self.id, save_time, extension)
-        # name = re.sub(r'_10000', '', name)
+
+        save_ex = ""
+        if Parameters.naming_method == NamingMethod.by_index:
+            if self.page_count <= 1:
+                save_ex = "0"
+            else:
+                save_ex = str(index+1)
+        elif Parameters.naming_method == NamingMethod.by_time:
+            save_ex = time.strftime("%Y%m%d_%H%M%S", time.localtime())
+
+        name = "illust_%d_%s%s" % (self.id, save_ex, extension)
         return name
 
     def downloadGif(self):
@@ -424,8 +413,7 @@ class Illust:
             print(gif_name + "already existed")
 
         frame_savepath = Parameters.illust_cache_path + str(self.id)
-        if not os.path.exists(frame_savepath):
-            os.makedirs(frame_savepath)
+        makeDir(frame_savepath)
 
         # download & unzip
         self.__tryToDownloadFile(gif_url, frame_savepath + ".zip")
@@ -451,8 +439,6 @@ class Illust:
                     img_array = img2
                 image.append(img_array)
 
-        # print(type(image))
-        # iio.mimwrite(gif_name, image, duration=delay)
         image = np.array(image)
         iio.imwrite(gif_name, image, duration=delay, kmax=1)
 
@@ -467,8 +453,7 @@ class Illust:
         results = {}
         for i in index_list:
             if i >= self.page_count:
-                raise ValueError("Wrong input index", i)
-
+                raise IndexError("Wrong input index: ", i+1)
         for count in range(math.ceil(len(index_list) / Parameters.max_download_thread)):
             que = Queue()
             thread_list = []
@@ -479,7 +464,7 @@ class Illust:
                     break
                 if not self.isDownloadedBefore(index_list[index]):
                     thread = threading.Thread(target=lambda q, arg1, arg2, arg3: q.put(self.__tryToDownloadFile(arg1, arg2, index=arg3)),
-                                              args=(que, self.urls[index_list[index]], path + self.setName(self.urls[index_list[index]]),
+                                              args=(que, self.urls[index_list[index]], path + self.getOriginName(index_list[index]),
                                                     index_list[index]))
                     thread_list.append(thread)
                     thread.start()
@@ -835,8 +820,7 @@ def deleteAllSavedData():
 def createAcquiredPaths():
     path_list = Parameters.path_list
     for folder_path in path_list:
-        if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
+        makeDir(folder_path)
 
 
 def getLoginToken():
@@ -860,6 +844,11 @@ def setLanguage(lang):
 
 def sleep(sec):
     time.sleep(sec)
+
+
+def makeDir(path):
+    if not os.path.exists(path):
+        os.makedirs(path)
 
 
 '''##############################    START   #############   HERE    ############################################'''

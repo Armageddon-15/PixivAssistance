@@ -1,8 +1,11 @@
-from PAEnum import NSFWState
+from PAEnum import NSFWState, NamingMethod
 
 
 utc_offset = 8
+
 data_extension = ".ill"
+gif_extension = ".webp"
+naming_method = NamingMethod.by_index
 
 '''login token'''
 login_token_path = "login_token"

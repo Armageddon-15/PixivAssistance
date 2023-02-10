@@ -21,3 +21,8 @@ class LikeDislike(Enum):
     like = 0
     dislike = 1
     hint = 2
+
+
+class NamingMethod(Enum):
+    by_index = 0
+    by_time = 1
