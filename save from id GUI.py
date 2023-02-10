@@ -14,8 +14,6 @@ import os
 
 def saveFromId(id: int, index: Union[list, int] = 0):
     if type(index) is list:
-        for i in range(len(index)):
-            index[i] -= 1
         print("length of list is %d" % len(index))
     elif index > 0:
         print("1 picture")
@@ -34,8 +32,11 @@ def saveFromId(id: int, index: Union[list, int] = 0):
         except ValueError as e:
             print(e)
             return False
+        except IndexError as e:
+            print(e)
+            return False
         else:
-            if not os.path.exists(Parameters.illust_thbnl_path + illust.thmbnl_name()):
+            if not os.path.exists(Parameters.illust_thbnl_path + illust.thumbnail_name):
                 print("illust thb not exist")
                 illust.noNeedThumbnail()
             return True
