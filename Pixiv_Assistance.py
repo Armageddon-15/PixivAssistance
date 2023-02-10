@@ -13,7 +13,7 @@ import sys
 import GUISettings
 
 APP_NAME = "Pixiv Assistance"
-VERSION = 'Version: 0.2.0'
+VERSION = 'Version: 0.2.1'
 
 
 # resizable frameless widget

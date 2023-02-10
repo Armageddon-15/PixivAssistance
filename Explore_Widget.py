@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import QLabel, QPushButton, QMenu, QWidget, QGridLayout, QVBoxLayout, QFrame, QHBoxLayout
-from PyQt6.QtWidgets import QSizePolicy
+from PyQt6.QtWidgets import QSizePolicy, QSpinBox, QAbstractSpinBox
 from PyQt6.QtGui import QFont, QIcon, QImage, QPixmap, QDrag
 from PyQt6.QtCore import Qt, QSize, QRect, QThread, QPoint, QMimeData
 from PyQt6 import QtCore
@@ -377,7 +377,7 @@ class PicGrid(QWidget):
     def loadPicBox(self, box_num):
         pic_box = Thumbnails(self)
         try:
-            pic_box.setPixmap(set_pixmap(Parameters.illust_thbnl_path + self.illust_list[box_num].thmbnl_name()))
+            pic_box.setPixmap(set_pixmap(Parameters.illust_thbnl_path + self.illust_list[box_num].thumbnail_name))
             pic_box.loadAttr(self.illust_list[box_num])
         except IndexError:
             pic_box.deleteLater()
@@ -387,19 +387,22 @@ class PicGrid(QWidget):
         self.curr_pic_boxes.append(pic_box)
 
     def nextPage(self):
-        self.page_count = self.page_count + 1
-        self.main.isNormal()
-        self.createGrid()
+        self.toCertainPage(self.page_count + 1)
 
     def prePage(self):
-        self.page_count = self.page_count - 1
+        self.toCertainPage(self.page_count - 1)
+
+    def toCertainPage(self, page: int):
+        self.page_count = min(max(0, page), self.max_page_count-1)
         self.main.isNormal()
         self.createGrid()
 
     def setPageCount(self):
-        self.main.setPageCount(str(self.page_count + 1) + "/" + str(self.max_page_count))
+        self.main.setPageCount(str(self.page_count + 1),  str(self.max_page_count))
         if self.page_count <= 0:
             self.main.isTop()
+        if self.page_count >= self.max_page_count:
+            self.main.isBottom()
 
     def toDetailPage(self, illust, index):
         self.main.toDetailPage(illust, index)
@@ -412,6 +415,47 @@ class PicGrid(QWidget):
         self.page_count = min(self.page_count, self.max_page_count-1)
         self.createGrid()
         self.gbox.setSpacing(GUISettings.explore_setting.thumbnail_spacing.value)
+
+
+class PageCountLabel(QFrame):
+    def __init__(self, parent):
+        super(PageCountLabel, self).__init__(parent)
+        self.main = parent
+        self.l_frame = QFrame(self)
+        self.page_count_edit = QSpinBox(self)
+        self.slash_label = QLabel(self)
+        self.max_label = QLabel(self)
+        self.r_frame = QFrame(self)
+
+        self.page_count_edit.setAlignment(Qt.AlignmentFlag.AlignRight)
+        self.page_count_edit.setStyleSheet("border: 0px")
+        self.page_count_edit.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
+        self.page_count_edit.setMaximum(9999)
+        self.slash_label.setText("/")
+        self.slash_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.max_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+
+        self.hbox = QHBoxLayout(self)
+        self.hbox.addWidget(self.l_frame)
+        self.hbox.addWidget(self.page_count_edit)
+        self.hbox.addWidget(self.slash_label)
+        self.hbox.addWidget(self.max_label)
+        self.hbox.addWidget(self.r_frame)
+
+    def setText(self, count: str, max_page_count: str):
+        self.page_count_edit.setValue(int(count))
+        self.max_label.setText(max_page_count)
+
+    def getTypeInPage(self):
+        return self.page_count_edit.value()
+
+    def toCertainPage(self):
+        self.main.toCertainPage()
+
+    def keyPressEvent(self, event) -> None:
+        if event.key() != 0:
+            if event.key() == 16777220 or event.key() == 16777221:
+                self.toCertainPage()
 
 
 class ExploreWidget(QWidget):
@@ -433,9 +477,7 @@ class ExploreWidget(QWidget):
         self.pre_button.setFont(QFont("Microsoft JhengHei", 12, 0, False))
         self.pre_button.setText("previous page")
 
-        self.page_count_label = QLabel(self)
-        self.page_count_label.setText("0/5")
-        self.page_count_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.page_count_label = PageCountLabel(self)
 
         self.next_button = QPushButton(self.page_count_frame)
         self.next_button.setMinimumSize(150, 0)
@@ -495,8 +537,12 @@ class ExploreWidget(QWidget):
         self.explore_content_widget.prePage()
         self.explore_scrollArea.toTop()
 
-    def setPageCount(self, count):
-        self.page_count_label.setText(count)
+    def toCertainPage(self):
+        self.explore_content_widget.toCertainPage(self.page_count_label.getTypeInPage()-1)
+        self.explore_scrollArea.toTop()
+
+    def setPageCount(self, count, m):
+        self.page_count_label.setText(count, m)
 
     def toDetailPage(self, illust, index):
         self.main.toDetailPage(illust, index)
