@@ -753,7 +753,7 @@ def loadAllNSFW():
                     continue
                 elif Parameters.nsfw == NSFWState.nsfw and not illust.is_nsfw:
                     continue
-            illust_list.append(illust)
+                illust_list.append(illust)
 
     print("total count %d" % len(illust_list))
     return illust_list

@@ -63,7 +63,8 @@ class IllustReader(QWidget):
                     "Author ID:": str(self.illust.user_id),
                     "Author Name:": self.illust.user_name,
                     "Downloaded Page(s):": "",
-                    "Location:": self.illust.downloaded_path}
+                    "Location:": self.illust.downloaded_path,
+                    "Show in PA:": str(self.illust.need_thumbnail)}
 
         # tags string
         tag_str = ""
