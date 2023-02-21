@@ -11,8 +11,6 @@ MANIFEST
 # mac
 .DS_Store
 
-*.jpg
-*.png
 *.gif
 *.qrc
 README.bb.md
