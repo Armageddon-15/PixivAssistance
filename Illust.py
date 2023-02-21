@@ -65,10 +65,10 @@ class Illust:
         if ai_type == 2:
             self.tags.append("AI生成")
             self.translate_tags.append("Pixiv AI label")
-        elif ai_type == 1:
-            pass
-        else:
-            print(ai_type)
+        # elif ai_type == 1:
+        #     pass
+        # else:
+            # print(ai_type)
 
     def getTags(self, illust):
         for name in illust.tags:
@@ -83,7 +83,7 @@ class Illust:
             json_result_gif = api.ugoira_metadata(self.id)
             self.gif_url = json_result_gif.ugoira_metadata.zip_urls.medium
             gif_frame_data = json_result_gif.ugoira_metadata.frames
-            print(gif_frame_data)
+            # print(gif_frame_data)
             for data in gif_frame_data:
                 if data.delay < 1:
                     delay = data.delay * 1000
@@ -180,7 +180,10 @@ class Illust:
         """
         return original file name by index and currently only worked in by_index naming method
         """
-        return self.setName(index, self.urls[index])
+        if self.type != "ugoira":
+            return self.setName(index, self.urls[index])
+        else:
+            return self.setName()
 
     @property
     def r18_dir(self):
@@ -542,7 +545,6 @@ class Illust:
         actual_length = str(os.path.getsize(save_path))
         if expected_length != actual_length:
             raise InterruptError('Download %d was unexpectedly interrupted.' % self.id)
-            # print("Download %d successfully!" % self.id)
 
         return 0
 
@@ -659,6 +661,10 @@ def getIllustByID(illust_id: int) -> Illust:
     return Illust(api.illust_detail(illust_id).illust)
 
 
+def getIllustMetadataByID(illust_id: int):
+    return api.illust_detail(illust_id)
+
+
 def removeObjInList(lst: list, o: object):
     for _ in range(len(lst)):
         try:
@@ -726,7 +732,7 @@ def saveAllData():
     print("\n---get list done---\ntotal %d pics update\n" % total)
     for i in range(10):
         SaveDataWorker(illust_q)
-    print(illust_q.qsize())
+    # print(illust_q.qsize())
     illust_q.join()
 
 
@@ -753,6 +759,8 @@ def loadAllNSFW():
                     continue
                 elif Parameters.nsfw == NSFWState.nsfw and not illust.is_nsfw:
                     continue
+                # if illust.type != "ugoira":
+                #     continue
                 illust_list.append(illust)
 
     print("total count %d" % len(illust_list))

@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import QLabel, QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QFrame
 from PyQt6.QtWidgets import QSizePolicy, QStackedWidget, QSizeGrip, QApplication
-from PyQt6.QtGui import QFont, QIcon, QPalette, QColor, QImage, QPixmap, QBrush, QPainter, QPen
+from PyQt6.QtGui import  QIcon, QPalette, QColor, QImage, QPixmap, QBrush, QPainter, QPen
 from PyQt6.QtCore import Qt, QSize, QRect, QPoint
 from Explore_Widget import ExploreWidget
 from Detail_Widget import DetailWin

@@ -32,6 +32,7 @@ def saveFromId(id: int, index: Union[list, int] = 0):
         except ValueError as e:
             print(e)
             return False
+
         except IndexError as e:
             print(e)
             return False
