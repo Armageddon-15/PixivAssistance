@@ -55,6 +55,8 @@ def strToList(string: str) -> list:
     for pages in sp_list:
         if pages.find("-") != -1:
             s_e = pages.split("-")
+            if s_e[0] == "" or s_e[1] == "":
+                continue
             s_e[0] = int(s_e[0])
             s_e[1] = int(s_e[1])
             if s_e[0] > s_e[1]:
