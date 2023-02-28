@@ -1,4 +1,4 @@
-from PAEnum import NSFWState, NamingMethod
+from PAEnum import NamingMethod
 
 
 utc_offset = 8
@@ -16,7 +16,7 @@ illust_thbnl_path = "thumbnails\\"
 illust_cache_path = "cache\\"
 icon_path = "icons\\"
 auth_head_path = "auth\\"
-download_path = "G:\\AnimPic_Unsorted\\Pictures 89\\"
+download_path = "G:\\AnimPic_Unsorted\\Pictures 91\\"
 r18_subfolder = "R-18\\"
 # gif_path = "D:\\PhonePicBackUp\\GIFs\\"
 gif_path = download_path
@@ -31,8 +31,12 @@ path_list = [illust_data_path, illust_thbnl_path, illust_cache_path, download_pa
 max_download_thread = 4
 check_downloaded = False
 
-'''NSFW setting'''
-nsfw = NSFWState.all
+'''PA load setting'''
+# currently not support list attribute such as tags and translated_tags
+# method should be "or" or "and", default is "or"
+# pa_load = {"method": "and", "is_like": False, "is_nsfw": False}
+pa_load = {}
+
 
 '''proxy'''
 proxies = {

@@ -120,38 +120,40 @@ class Illust:
 
     def updateIllust(self):
         illust = api.illust_detail(self.id).illust
+        if illust:
+            self.id = illust.id
+            self.title = illust.title
+            self.type = illust.type
+            self.is_like = illust.is_bookmarked
+            self.create_time = None
+            self.time_str = ""
+            self.block = illust.is_muted
 
-        self.id = illust.id
-        self.title = illust.title
-        self.type = illust.type
-        self.is_like = illust.is_bookmarked
-        self.create_time = None
-        self.time_str = ""
-        self.block = illust.is_muted
+            self.page_count = illust.page_count
+            self.tags = []
+            self.translate_tags = []
+            self.description = illust.caption
 
-        self.page_count = illust.page_count
-        self.tags = []
-        self.translate_tags = []
-        self.description = illust.caption
+            self.user_id = illust.user['id']
+            self.user_name = illust.user['name']
+            self.user_head = illust.user.profile_image_urls['medium']
 
-        self.user_id = illust.user['id']
-        self.user_name = illust.user['name']
-        self.user_head = illust.user.profile_image_urls['medium']
+            self.sq_preview_url = illust.image_urls['square_medium']
+            self.large_urls = []
+            self.urls = []
+            self.gif_url = ""
+            self.gif_delay = []
 
-        self.sq_preview_url = illust.image_urls['square_medium']
-        self.large_urls = []
-        self.urls = []
-        self.gif_url = ""
-        self.gif_delay = []
+            self.checkAI(illust)
+            self.getTags(illust)
+            self.getCreateTime(illust)
+            self.getUrls(illust)
+            self.is_nsfw = self.isNSFW()
+            self.readCustomData()
 
-        self.checkAI(illust)
-        self.getTags(illust)
-        self.getCreateTime(illust)
-        self.getUrls(illust)
-        self.is_nsfw = self.isNSFW()
-        self.readCustomData()
-
-        self.saveData()
+            self.saveData()
+        else:
+            print("cannot get illust data")
 
     @property
     def thumbnail_name(self):
@@ -736,49 +738,102 @@ def saveAllData():
     illust_q.join()
 
 
-def loadAll():
-    global illust_list
+def illustLoader():
     for file in os.listdir(Parameters.illust_data_path):
         if os.path.splitext(file)[1] == Parameters.data_extension:
             illust = loadID(int(os.path.splitext(file)[0]))
-            # print(illust.title, illust.create_time.strftime("%Y年%m月%d日%H时%M分%S秒 创建"))
-            if illust.need_thumbnail:
+            yield illust
+
+
+def loadCertain(method="or", **kwargs):
+    global illust_list
+    print("read data")
+    if method == "or":
+        for illust in illustLoader():
+            for key, v in kwargs.items():
+                if illust.__dict__[key] == v:
+                    illust_list.append(illust)
+                    break
+
+    elif method == "and":
+        for illust in illustLoader():
+            count = 0
+            for key, v in kwargs.items():
+                count += 1
+                if illust.__dict__[key] == v:
+                    count -= 1
+            if count == 0:
                 illust_list.append(illust)
+
+    return illust_list
+
+
+def loadAll():
+    global illust_list
+    for illust in illustLoader():
+        if illust.need_thumbnail:
+            illust_list.append(illust)
     print("total count %d" % len(illust_list))
     return illust_list
 
 
-def loadAllNSFW():
+def loadByOption():
+    """
+    currently not support list attribute such as tags and translated_tags
+    """
     global illust_list
-    print("read data")
-    for file in os.listdir(Parameters.illust_data_path):
-        if os.path.splitext(file)[1] == Parameters.data_extension:
-            illust = loadID(int(os.path.splitext(file)[0]))
-            if illust.need_thumbnail:
-                if Parameters.nsfw == NSFWState.sfw and illust.is_nsfw:
-                    continue
-                elif Parameters.nsfw == NSFWState.nsfw and not illust.is_nsfw:
-                    continue
-                # if illust.type != "ugoira":
-                #     continue
-                illust_list.append(illust)
 
+    load_op = Parameters.pa_load
+    load_op.update({"need_thumbnail": True})
+    loadCertain(**load_op)
     print("total count %d" % len(illust_list))
     return illust_list
 
 
 def loadAllID():
+    """
+    it will return illust id list, which will be an integer list
+    """
     id_list = []
-    for file in os.listdir(Parameters.illust_data_path):
-        if os.path.splitext(file)[1] == Parameters.data_extension:
-            illust = int(os.path.splitext(file)[0])
-            print(type(illust))
-            id_list.append(illust)
+    for illust in illustLoader():
+        print(type(illust))
+        id_list.append(illust)
     print("total count %d" % len(id_list))
     return id_list
 
 
-def deleteLiked(data_list: list):
+def deleteCertainTypes(method="or", **kwargs):
+    """
+    method parameter should be "or" or "and"
+    The rest input parameters can be all members in Illust class
+    e.g. type can be ugoira, manga or illust
+    """
+    data_list = loadAll()
+    if method == "or":
+        for key, v in kwargs.items():
+            print(f"searching for {key} is {v}")
+            for illust in reversed(data_list):
+                if illust.__dict__[key] == v:
+                    print(illust.id, illust.__dict__[key])
+
+    elif method == "and":
+        for illust in reversed(data_list):
+            count = 0
+            words = f"\n{illust}is found:"
+            for key, v in kwargs.items():
+                count += 1
+                if illust.__dict__[key] == v:
+                    count -= 1
+                    if count != 0:
+                        break
+                    words += f"\"{key}\" is {v}; "
+            words = words[:len(words) - 2]
+            if count == 0:
+                print(words)
+
+
+def deleteAllLikedIllust():
+    data_list = loadAll()
     count = 0
     for illust in reversed(data_list):
         print(illust.id, illust.is_like)
@@ -792,10 +847,6 @@ def deleteLiked(data_list: list):
         if not os.path.exists(Parameters.illust_data_path + file_name + Parameters.data_extension):
             os.remove(Parameters.illust_thbnl_path + name)
     return data_list
-
-
-def deleteAllLikedIllust():
-    deleteLiked(loadAll())
 
 
 def saveThumbnails():

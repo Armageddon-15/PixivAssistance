@@ -313,7 +313,7 @@ class PicGrid(QWidget):
         super().__init__(widget)
         self.main = widget
         self.page_count = 0
-        self.illust_list = list(reversed(Illust.loadAllNSFW()))
+        self.illust_list = list(reversed(Illust.loadByOption()))
         self.max_page_count = math.ceil(len(self.illust_list) / GUISettings.explore_setting.pic_per_page.value)
 
         self.gbox = QGridLayout(self)
