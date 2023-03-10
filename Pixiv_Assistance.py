@@ -368,8 +368,8 @@ class Window(QWidget):
         self.max_label.clicked.connect(self.btnMaxClicked)
         self.explore_win.update()
 
-    def setDownloadState(self, downloading=0, total=0):
-        self.download_count += downloading
+    def setDownloadState(self, downloaded=0, total=0):
+        self.download_count += downloaded
         self.total_download_count += total
         self.download_count_label.setText(f'{self.download_count}/{self.total_download_count}')
 

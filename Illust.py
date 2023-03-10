@@ -1,5 +1,3 @@
-import Parameters
-import pixivpy3 as pixiv
 import os
 import subprocess
 import pickle
@@ -14,8 +12,12 @@ import queue
 import threading
 import math
 import numpy as np
+import webbrowser
 from queue import Queue
 from typing import Union
+
+import Parameters
+import pixivpy3 as pixiv
 from PAEnum import *
 from PAException import *
 
@@ -287,7 +289,7 @@ class Illust:
             return save_path, DownloadState.successful
         else:
             result = self.__tryToDownloadFile(self.large_urls[index], save_path, index)
-            return save_path, result[0]
+            return save_path, result[1]
 
     def saveByIndex(self, index: int):
         r18_path = self.r18_dir
@@ -312,10 +314,10 @@ class Illust:
             if not self.isDownloadedBefore(index):
                 name = path + self.getOriginName(index)
                 result = self.__tryToDownloadFile(self.urls[index], name, index=index)
-                self.downloaded.update({result[1]: result[0]})
+                self.downloaded.update({result[0]: result[1]})
                 self.saveData()
                 self.downloaded_path = name
-                return {result[1]: result[0]}
+                return {result[0]: result[1]}
 
     def saveAll(self, number: Union[int, list] = 0):
         r18_path = self.r18_dir
@@ -325,16 +327,21 @@ class Illust:
 
         if self.type == "ugoira":
             if not os.path.exists(Parameters.illust_cache_path + str(self.id) + ".webp"):
-                self.downloadGif()
-                self.saveAll()
+                result = self.downloadGif()
+                result = {result[0]: result[1]}
+                # self.saveAll()
+            else:
+                result = {0: DownloadState.successful}
 
             path = Parameters.gif_path + r18_path + special_tag_path
             makeDir(path)
             name = path + self.getOriginName()
             shutil.copyfile(Parameters.illust_cache_path + str(self.id) + ".webp", name)
-            self.downloaded.update({0: DownloadState.successful})
+            self.downloaded.update(result)
             self.downloaded_path = name
             self.saveData()
+
+            yield result
 
         elif self.page_count > 1:
             path = Parameters.group_path + r18_path + special_tag_path + str(self.id) + "\\"
@@ -345,7 +352,10 @@ class Illust:
                 index_list = []
                 for i in range(self.page_count):
                     index_list.append(i)
-                results = self.downloadListPics(index_list, path)
+                for result in self.downloadListPics(index_list, path):
+                    results.update(result)
+                    yield result
+                # results = self.downloadListPics(index_list, path)
 
             elif type(number) is int:
                 number -= 1
@@ -355,12 +365,15 @@ class Illust:
                 name = Parameters.download_path + r18_path + special_tag_path + self.getOriginName(number)
                 result = self.__tryToDownloadFile(self.urls[number], name, index=number)
                 self.downloaded_path = name
-                results.update({result[1]: result[0]})
+                results.update({result[0]: result[1]})
+                yield {result[0]: result[1]}
 
             elif type(number) is list:
                 for i in range(len(number)):
                     number[i] -= 1
-                results = self.downloadListPics(number, path)
+                for result in self.downloadListPics(number, path):
+                    results.update(result)
+                    yield result
 
             else:
                 raise TypeError("Wrong input index! Must be a int or a list")
@@ -371,7 +384,8 @@ class Illust:
             makeDir(path)
             name = path + self.getOriginName(0)
             result = self.__tryToDownloadFile(self.urls[0], name)
-            results.update({result[1]: result[0]})
+            yield {result[0]: result[1]}
+            results.update({result[0]: result[1]})
             self.downloaded_path = name
 
         self.downloaded.update(results)
@@ -427,22 +441,19 @@ class Illust:
                 zip_ref.extractall(frame_savepath)
         except FileNotFoundError:
             print("frames of %d dowmload failed")
-            return gif_name
+            return {0: DownloadState.failed}
 
         # compose to gif
         image = []
-        for root, dirs, file in os.walk(frame_savepath + '\\'):
-            for name in file:
-                img_array = iio.imread(root + name)
-                try:
-                    img_array.shape[2]
-
-                except IndexError:
-                    img2 = np.zeros((img_array.shape[0], img_array.shape[1], 3)).astype(np.uint8)
+        for root, dirs, files in os.walk(frame_savepath + '\\'):
+            for name in files:
+                img_frame = iio.imread(root + name)
+                if len(img_frame.shape) == 2:
+                    img2 = np.zeros((img_frame.shape[0], img_frame.shape[1], 3), dtype=img_frame.dtype)
                     for i in range(3):
-                        img2[:, :, i] = img_array
-                    img_array = img2
-                image.append(img_array)
+                        img2[:, :, i] = img_frame
+                    img_frame = img2
+                image.append(img_frame)
 
         image = np.array(image)
         iio.imwrite(gif_name, image, duration=delay, kmax=1)
@@ -452,14 +463,17 @@ class Illust:
         shutil.rmtree(frame_savepath, ignore_errors=True)
 
         print('composing to gif successfully')
-        return gif_name
+        return {0: DownloadState.successful}
 
     def downloadListPics(self, index_list: list, path: str):
-        results = {}
+        """
+        For original pic specifically
+        """
         for i in index_list:
             if i >= self.page_count:
                 raise IndexError("Wrong input index: ", i+1)
         for count in range(math.ceil(len(index_list) / Parameters.max_download_thread)):
+            results = {}
             que = Queue()
             thread_list = []
 
@@ -481,9 +495,10 @@ class Illust:
 
             while not que.empty():
                 result = que.get()
-                results.update({result[1]: result[0]})
+                results.update({result[0]: result[1]})
+
+            yield results
         self.downloaded_path = path
-        return results
 
     def __tryToDownloadFile(self, url, save_path, i=0, index=0):
         if i < 2:
@@ -510,14 +525,14 @@ class Illust:
             try:
                 self.__downloadFile(url, save_path)
             except InterruptError:
-                return DownloadState.failed, index
+                return index, DownloadState.failed
             except CannotVerifyError:
-                return DownloadState.cannot_verify, index
+                return index, DownloadState.cannot_verify
             except Exception as e:
                 print(e)
-                return DownloadState.unexpected_error, index
+                return index, DownloadState.unexpected_error
 
-        return DownloadState.successful, index
+        return index, DownloadState.successful
 
     def __downloadFile(self, url, save_path):
         """
@@ -738,8 +753,8 @@ def saveAllData():
     illust_q.join()
 
 
-def illustLoader():
-    for file in os.listdir(Parameters.illust_data_path):
+def illustLoader(path=Parameters.illust_data_path):
+    for file in os.listdir(path):
         if os.path.splitext(file)[1] == Parameters.data_extension:
             illust = loadID(int(os.path.splitext(file)[0]))
             yield illust
@@ -814,7 +829,8 @@ def deleteCertainTypes(method="or", **kwargs):
             print(f"searching for {key} is {v}")
             for illust in reversed(data_list):
                 if illust.__dict__[key] == v:
-                    print(illust.id, illust.__dict__[key])
+                    illust.deleteCache()
+                    # print(illust.id, illust.__dict__[key])
 
     elif method == "and":
         for illust in reversed(data_list):
@@ -830,6 +846,7 @@ def deleteCertainTypes(method="or", **kwargs):
             words = words[:len(words) - 2]
             if count == 0:
                 print(words)
+                illust.deleteCache()
 
 
 def deleteAllLikedIllust():
@@ -874,6 +891,21 @@ def deleteAllSavedData():
     if os.path.exists(Parameters.illust_cache_path):
         print("removing cache path", os.path.abspath(Parameters.illust_cache_path))
         shutil.rmtree(Parameters.illust_cache_path)
+
+
+def toAuthorPage(author_id):
+    url = "https://www.pixiv.net/users/%d" % author_id
+    webbrowser.open(url, 2)
+
+
+def toDetailPage(illust_id):
+    url = "https://www.pixiv.net/artworks/%d" % illust_id
+    webbrowser.open(url, 2)
+
+
+def searchTagPage(tag: str):
+    url = "https://www.pixiv.net/tags/%s/artworks" % tag
+    webbrowser.open(url, 2)
 
 
 def createAcquiredPaths():

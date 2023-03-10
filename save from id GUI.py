@@ -28,7 +28,8 @@ def saveFromId(id: int, index: Union[list, int] = 0):
     else:
         print(illust)
         try:
-            illust.saveAll(index)
+            for i in illust.saveAll(index):
+                pass
         except ValueError as e:
             print(e)
             return False
@@ -251,8 +252,6 @@ class SaveFromID(QWidget):
             if event.key() == 16777220 or event.key() == 16777221:
                 # those two int is value of main enter and pad enter
                 if self.hover:
-                    pass
-                    print(self.hover, self.index)
                     self.btnStart()
 
     def enterEvent(self, e) -> None:
@@ -277,8 +276,8 @@ class GroupSaveGUI(QWidget):
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint)
         self.setAcceptDrops(True)
 
-        self.setMinimumSize(600, 600)
-        self.setMaximumSize(600, 9999)
+        self.setMinimumSize(590, 550)
+        self.setMaximumSize(590, 9999)
 
         self.scroll_area = QScrollArea(self)
         self.scroll_area.setWidgetResizable(True)

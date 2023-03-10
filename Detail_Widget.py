@@ -11,7 +11,6 @@ import GUISettings
 import Illust
 import os
 import cv2
-import webbrowser
 
 
 class DownloadDetailThread(QThread):
@@ -159,8 +158,7 @@ class TagLabel(QWidget):
 
         if e.button() == Qt.MouseButton.LeftButton:
             if global_pos_TL.x() < cursor_pos.x() < global_pos_BR.x() and global_pos_TL.y() < cursor_pos.y() < global_pos_BR.y():
-                url = "https://www.pixiv.net/tags/%s/artworks" % self.tag_name.text()
-                webbrowser.open(url)
+                Illust.searchTagPage(self.tag_name.text())
 
 
 class DetailLabel(QLabel):
@@ -485,8 +483,8 @@ class DetailWin(QWidget):
     def nextIllust(self):
         self.main.nextIllust(self.index)
 
-    def setDownloadState(self, download=0, total=0):
-        self.main.setDownloadState(download, total)
+    def setDownloadState(self, downloaded=0, total=0):
+        self.main.setDownloadState(downloaded, total)
 
     def runtimeUpdate(self):
         for detail_pic in self.pic_stream:

@@ -11,13 +11,12 @@ from PAEnum import *
 import GUISettings
 import Illust
 import math
-import webbrowser
 import numpy as np
 
 
-class GetKeyGrabber(QThread):
+class KeyGrabber(QThread):
     def __init__(self):
-        super(GetKeyGrabber, self).__init__()
+        super(KeyGrabber, self).__init__()
 
     def run(self):
         while True:
@@ -36,7 +35,12 @@ class DownloadThread(QThread):
     def run(self):
         self.update.emit("Downloading")
         try:
-            self.illust.saveAll()
+            for d_state in self.illust.saveAll():
+                if self.add_func is not None:
+                    results = list(d_state.values())
+                    for result in results:
+                        if result == DownloadState.successful:
+                            self.add_func(1, 0)
             state = self.illust.downloaded
         except Exception as e:
             print(f"Download Error Occurred, type is {type(e)}")
@@ -50,8 +54,6 @@ class DownloadThread(QThread):
                     self.update.emit("All failed")
             else:
                 self.update.emit("Successful")
-            if self.add_func is not None:
-                self.add_func(self.illust.page_count - len(value), 0)
 
 
 class LikeIllustThread(QThread):
@@ -287,14 +289,19 @@ class Thumbnails(QLabel):
     def contextMenuEvent(self, e):
         cmenu = QMenu(self)
         to_web = cmenu.addAction("To Browser")
+        to_author = cmenu.addAction("To Author Page")
         update = cmenu.addAction("Update")
         locate_path = cmenu.addAction("Locate Saved Path")
         read_data = cmenu.addAction("Show Illust Data")
 
-        action = cmenu.exec(self.mapToGlobal(e.pos()))
+        pos = self.mapToGlobal(e.pos())
+        pos.setY(pos.y() - 5)
+        pos.setX(pos.x() - 2)
+        action = cmenu.exec(pos)
         if action == to_web:
-            url = "https://www.pixiv.net/artworks/%d" % self.illust.id
-            webbrowser.open(url, 2)
+            Illust.toDetailPage(self.illust.id)
+        elif action == to_author:
+            Illust.toAuthorPage(self.illust.user_id)
         elif action == update:
             self.illust.updateIllust()
             self.loadAttr(self.illust)
@@ -547,8 +554,8 @@ class ExploreWidget(QWidget):
     def toDetailPage(self, illust, index):
         self.main.toDetailPage(illust, index)
 
-    def setDownloadState(self, downloading=0, total=0):
-        self.main.setDownloadState(downloading, total)
+    def setDownloadState(self, downloaded=0, total=0):
+        self.main.setDownloadState(downloaded, total)
 
     def runtimeUpdate(self):
         self.explore_scrollArea.setRollingStep(GUISettings.explore_setting.scroll_step.value)

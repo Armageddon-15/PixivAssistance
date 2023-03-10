@@ -1,16 +1,13 @@
 import time
 import datetime
 import random
-from download_thbnl import update
+import os
 
 
 def loop():
     while True:
         print("\n---start---\n")
-        try:
-            update()
-        except Exception as e:
-            print(e)
+        os.system("venv\\Scripts\\python.exe download_thbnl.py")
         print("\n---end---\n")
         now = datetime.datetime.now()
         print("finish update at %s" % now)
