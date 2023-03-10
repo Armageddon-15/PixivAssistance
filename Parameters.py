@@ -16,11 +16,9 @@ illust_thbnl_path = "thumbnails\\"
 illust_cache_path = "cache\\"
 icon_path = "icons\\"
 auth_head_path = "auth\\"
-download_path = "G:\\AnimPic_Unsorted\\Pictures 91\\"
+download_path = "Your Path"
 r18_subfolder = "R-18\\"
-# gif_path = "D:\\PhonePicBackUp\\GIFs\\"
 gif_path = download_path
-# group_path = "G:\\AnimPic_Unsorted\\set pics\\"
 group_path = download_path
 special_tags_config_path = "special_tags.config"
 
