@@ -441,7 +441,7 @@ class Illust:
                 zip_ref.extractall(frame_savepath)
         except FileNotFoundError:
             print("frames of %d dowmload failed")
-            return {0: DownloadState.failed}
+            return 0, DownloadState.failed
 
         # compose to gif
         image = []
@@ -463,7 +463,7 @@ class Illust:
         shutil.rmtree(frame_savepath, ignore_errors=True)
 
         print('composing to gif successfully')
-        return {0: DownloadState.successful}
+        return 0, DownloadState.successful
 
     def downloadListPics(self, index_list: list, path: str):
         """
